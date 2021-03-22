@@ -1,5 +1,5 @@
 ---
-title: "Cutting by Risk Regions"
+title: "Cutting Data by Risk Regions"
 author: "Emma Sharpe"
 date: "3/19/2021"
 output:
@@ -12,6 +12,52 @@ output:
     theme: flatly
     highlight: tango
 ---
-In this document I am cutting the San Francisco Estuary institute (SFEI) microplastic data to the boudaries of the study site and risk regions. To learn more about how the microplastic data was collected, read the [SFEI microplastic report](https://www.sfei.org/documents/understanding-microplastics).
+In this document I am cutting the San Francisco Estuary institute (SFEI) microplastic data to the boundaries of the study site and risk regions. To learn more about how the microplastic data was collected, read the [SFEI microplastic report](https://www.sfei.org/documents/understanding-microplastics).
 
-# 
+# Required packages
+```{r }
+library(IETC) # To load packages use > devtools::install_github("WWU-IETC-R-Collab/IETC")
+library(tidyverse)
+library(data.table)
+library(sf)
+library(knitr)
+```
+
+# Loading data and shapefiles 
+
+```{r}
+# Read in SFEI particle data zipfile created in ClipToProjectBoundary and unzip it.
+particles <- IETC::unzipShape("https://github.com/WWU-IETC-R-Collab/ClipToProjectBoundary/raw/main/SFEI.particles.locations.zip")
+```
+
+Next we want to read in the shapefile we are going to use to cut the data. This shapefile is the risk regions selected for the study site. 
+```{r}
+# Unzip the shapefile from the GitHub repository "Risk_Region.shapefile"
+unzipShape("https://github.com/NSF-Microplastics-Project/Risk_Region.shapefile/raw/main/Data/SFB_RiskRegions_20210304_SP.zip")
+
+# The code below is not related to above but is indicating the zipfolder in this working directory. I am taking out the .shp to be use when cutting the data. 
+
+SFB.riskregions <- st_read("SFB_RiskRegions_20210304_SP/SFB_RiskRegions_20210304_SP.shp") %>% # transforms shapefile CRS to WGS84 vs NAD83
+  st_transform(st_crs(particles))
+```
+
+
+
+# Data Before Cutting 
+
+```{r}
+ggplot() +
+  geom_sf(data = SFB.riskregions) +
+  geom_sf(data = particles, color = "blue")
+```
+
+
+
+```{r}
+particles.within <- particles[SFB.riskregions,] # subsets only data within project study area
+
+ggplot() +
+  geom_sf(data = SFB.riskregions) +
+  geom_sf(data = particles.within, color = "blue")
+```
+
