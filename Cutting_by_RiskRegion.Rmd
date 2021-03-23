@@ -5,6 +5,7 @@ date: "3/19/2021"
 output:
   html_document:
     code_download: true
+    code_folding: hide
     df_print: paged
     keep_md: true
     toc: true
