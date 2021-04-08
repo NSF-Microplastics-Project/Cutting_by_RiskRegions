@@ -1,0 +1,109 @@
+---
+title: "ICIS-NPDES Data"
+author: "Emma Sharpe"
+date: "3/26/2021"
+output: 
+  html_document:
+    code_download: true
+    code_folding: hide
+    df_print: paged
+    keep_md: true
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+---
+
+
+# Required packages
+```{r message=FALSE, class.source = 'fold-show'}
+library(IETC) # To load packages use > devtools::install_github("WWU-IETC-R-Collab/IETC")
+library(tidyverse)
+library(data.table)
+library(sf) # Needed to open and work with shapefile: st_read(), st_write(), etc.
+library(knitr)
+library(rgdal)
+library(raster)
+install.packages('bit64') # used to 'integer64' columns in the NPDES.csv
+library(bit64)
+library(here)
+```
+
+
+# Load Data {.tabset}
+
+## Risk Regions 
+```{r}
+SFB.riskregions <- here("Data/SFB_RiskRegions_20210304_SP/SFB_RiskRegions_20210304_SP.shp") %>%
+  st_read()
+```
+
+## ICIS-NPDES Data
+[This ICIS-NPDES Discharge Location Data](https://echo.epa.gov/tools/data-downloads/icis-npdes-discharge-points-download-summary) was downloaded from the [Enforcement and Compliance Online](https://echo.epa.gov/tools/data-downloads#downloads) database on March 26, 2021. This is a national dataset that contains the outfall locations of many of the currently permitted facilities through NPDES.
+
+```{r}
+NPDES.csv <- fread("npdes_outfalls_layer.csv") 
+```
+
+```{r}
+names(NPDES.csv)
+```
+The type of X,Y location used here is longitude and latitude of the facility or outfall location expressed in decimal degrees, representing the degrees, minutes, and seconds of longitude, in the **NAD83 coordinate system**.
+
+
+# csv to shp
+The code for this section came from: [datacapentry.org](https://datacarpentry.org/r-raster-vector-geospatial/10-vector-csv-to-shapefile-in-r/) 
+
+Create object for coordinate system
+```{r}
+CalNAD83 <- st_crs(SFB.riskregions)
+```
+
+```{r}
+head(NPDES.csv[,36:37])
+```
+This should make the csv into a s
+```{r}
+NPDES.CA.csv = NPDES.csv %>% filter(STATE_CODE == "CA")
+NPDES.sf <- NPDES.CA.csv %>%
+  st_as_sf(coords=c("LATITUDE83", "LONGITUDE83"))  %>% 
+  st_set_crs(CalNAD83)
+```
+
+
+# Cutting Data
+Check that projections are the same 
+```{r}
+st_crs(SFB.riskregions)
+st_crs(NPDES.sf)
+```
+
+
+## Cut the data
+```{r}
+NPDES.sf <- st_join(NPDES.sf, SFB.riskregions["name"])
+
+NPDES.within.sf <- NPDES.sf %>%
+  filter(!is.na(name))
+
+## OR ##
+
+NPDES.within.sf <- NPDES.sf[SFB.riskregions,] # subsets only data within project study area
+
+
+b <- ggplot() +
+  geom_sf(data = SFB.riskregions) +
+  geom_sf(data = NPDES.sf, color = "blue")
+b
+```
+
+```{r}
+# write shapefile for SFEI.ID.particles.sf
+st_write(NPDES.within.sf, "NPDES.within.shp")
+
+# Zip up newly created shapefiles:
+
+
+```
+
+
