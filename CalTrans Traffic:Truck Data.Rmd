@@ -2,7 +2,7 @@
 title: "Traffic Data"
 author: "Emma Sharpe"
 date: "3/24/2021"
-output: html_document
+output: 
   html_document:
     code_download: true
     code_folding: hide
@@ -13,15 +13,68 @@ output: html_document
     theme: flatly
     highlight: tango
 ---
+In this document, two files for California Annuals Average Daily Traffic (AADT) counts are downloaded (both from the same agency but download in 2 different ways: ), cut to the study site, and then rejoined. 
 
 # Required packages
 ```{r }
 library(IETC) # To load packages use > devtools::install_github("WWU-IETC-R-Collab/IETC")
 library(tidyverse)
 library(data.table)
-library(sf)
+library(sf) # Needed to open and work with shapefile: st_read(), st_write(), etc.
 library(knitr)
 ```
 
+# 2019 AADT Traffic Data
+[This traffic data](https://gisdata-caltrans.opendata.arcgis.com/datasets/f71f49fb87b3426e9688fe66039170bc_0?geometry=-147.187%2C31.076%2C-91.377%2C43.281) was downloaded from the [CalTrans GIS Database](https://gisdata-caltrans.opendata.arcgis.com/) on March 24, 2021. This data is only 2018 traffic count year (October 1st through September 30th). Additional data from 2013 to 2018 will be added to this document in the next section.
+
+# Load data
+The shapefile shown in the code below may not always be available in this working directory. Find it in the Tox Box
+```{r}
+traffic.data <- st_read("Data/Traffic_Volumes_AADT/Traffic_Volumes_AADT.shp")
+```
 
 
+```{r}
+SFB.riskregions <- st_read("Data/SFB_RiskRegions_20210304_SP/SFB_RiskRegions_20210304_SP.shp") %>% # transforms shapefile CRS to WGS84 vs NAD83
+  st_transform(st_crs(traffic.data))
+```
+
+## Data Projection
+Double check to see if data is in the same projection. It needs to be in the same projection in order for the cutting to take place. 
+```{r}
+st_crs(SFB.riskregions)
+st_crs(traffic.data)
+```
+
+## Before Cutting 
+Here is a map of the data before cutting to the study area. It is for the entire state of california. 
+```{r}
+ggplot() +
+  geom_sf(data = SFB.riskregions) +
+  geom_sf(data = traffic.data, color = "blue")
+```
+
+## Cutting the Data 
+Here is a map of the data after it has been cut to the study area 
+```{r}
+traffic.data.within <- traffic.data[SFB.riskregions,] # subsets only data within project study area
+
+ggplot() +
+  geom_sf(data = SFB.riskregions) +
+  geom_sf(data = traffic.data.within, color = "blue")
+```
+
+## Save Data
+I have saved this newly cut data to this working directory. I will then join this with the data below. 
+```{r eval=FALSE}
+# write shapefile for SFEI.ID.particles.sf
+st_write(traffic.data.within, "2019TrafficData.riskregion.shp")
+
+# Zip up newly created shapefiles:
+
+zip(zipfile = "2019TrafficData.riskregion.zip", files = c("2019TrafficData.riskregion.dbf", "2019TrafficData.riskregion.prj", "2019TrafficData.riskregion.shp", "2019TrafficData.riskregion.shx")) 
+
+```
+
+
+# 2013-2018 AADT Traffic Data

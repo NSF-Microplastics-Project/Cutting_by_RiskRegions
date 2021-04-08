@@ -5,6 +5,7 @@ date: "3/19/2021"
 output:
   html_document:
     code_download: true
+    code_folding: hide
     df_print: paged
     keep_md: true
     toc: true
@@ -73,30 +74,15 @@ library(knitr)
 
 # Loading data and shapefiles 
 
-
-```r
-# Read in SFEI particle data zipfile created in ClipToProjectBoundary and unzip it.
-particles <- IETC::unzipShape("https://github.com/WWU-IETC-R-Collab/ClipToProjectBoundary/raw/main/SFEI.particles.locations.zip")
-```
-
-```
-## Reading layer `SFEI.ID.particles' from data source `/private/var/folders/y9/fm2hb65j7_gf39v8djx1_qyc0000gn/T/RtmpWqnWWs/filecf824895567/SFEI.ID.particles.shp' using driver `ESRI Shapefile'
-## Simple feature collection with 43554 features and 12 fields
-## Geometry type: POINT
-## Dimension:     XY
-## Bounding box:  xmin: -123.4973 ymin: 37.37356 xmax: -121.91 ymax: 38.2057
-## Geodetic CRS:  WGS 84
-```
-
 Next we want to read in the shapefile we are going to use to cut the data. This shapefile is the risk regions selected for the study site. 
 
 ```r
 # Unzip the shapefile from the GitHub repository "Risk_Region.shapefile"
-unzipShape("https://github.com/NSF-Microplastics-Project/Risk_Region.shapefile/raw/main/Data/SFB_RiskRegions_20210304_SP.zip")
+risk.region.shp <- unzipShape("https://github.com/NSF-Microplastics-Project/Risk_Region.shapefile/raw/main/Data/SFB_RiskRegions_20210304_SP.zip")
 ```
 
 ```
-## Reading layer `SFB_RiskRegions_20210304_SP' from data source `/private/var/folders/y9/fm2hb65j7_gf39v8djx1_qyc0000gn/T/RtmpWqnWWs/filecf824dd91ad4/SFB_RiskRegions_20210304_SP.shp' using driver `ESRI Shapefile'
+## Reading layer `SFB_RiskRegions_20210304_SP' from data source `/private/var/folders/y9/fm2hb65j7_gf39v8djx1_qyc0000gn/T/RtmpvUh6Gi/filec3aca7ce6ee/SFB_RiskRegions_20210304_SP.shp' using driver `ESRI Shapefile'
 ## Simple feature collection with 4 features and 5 fields
 ## Geometry type: POLYGON
 ## Dimension:     XY
@@ -107,12 +93,11 @@ unzipShape("https://github.com/NSF-Microplastics-Project/Risk_Region.shapefile/r
 ```r
 # The code below is not related to above but is indicating the zipfolder in this working directory. I am taking out the .shp to be use when cutting the data. 
 
-SFB.riskregions <- st_read("SFB_RiskRegions_20210304_SP/SFB_RiskRegions_20210304_SP.shp") %>% # transforms shapefile CRS to WGS84 vs NAD83
-  st_transform(st_crs(particles))
+SFB.riskregions <- st_read("Data/SFB_RiskRegions_20210304_SP/SFB_RiskRegions_20210304_SP.shp")
 ```
 
 ```
-## Reading layer `SFB_RiskRegions_20210304_SP' from data source `/Users/emmasharpe/Documents/B. R Studio /Projects/Cutting_by_RiskRegion/SFB_RiskRegions_20210304_SP/SFB_RiskRegions_20210304_SP.shp' using driver `ESRI Shapefile'
+## Reading layer `SFB_RiskRegions_20210304_SP' from data source `/Users/emmasharpe/Documents/B. R Studio /Projects/With GitHub Repos/Cutting_by_RiskRegion/Data/SFB_RiskRegions_20210304_SP/SFB_RiskRegions_20210304_SP.shp' using driver `ESRI Shapefile'
 ## Simple feature collection with 4 features and 5 fields
 ## Geometry type: POLYGON
 ## Dimension:     XY
@@ -121,14 +106,33 @@ SFB.riskregions <- st_read("SFB_RiskRegions_20210304_SP/SFB_RiskRegions_20210304
 ```
 
 
+```r
+# Read in SFEI particle data zipfile created in ClipToProjectBoundary and unzip it.
+particles <- IETC::unzipShape("https://github.com/WWU-IETC-R-Collab/ClipToProjectBoundary/raw/main/SFEI.particles.locations.zip") %>%
+  st_transform(st_crs(SFB.riskregions))
+```
+
+```
+## Reading layer `SFEI.ID.particles' from data source `/private/var/folders/y9/fm2hb65j7_gf39v8djx1_qyc0000gn/T/RtmpvUh6Gi/filec3ac2b1661ac/SFEI.ID.particles.shp' using driver `ESRI Shapefile'
+## Simple feature collection with 43554 features and 12 fields
+## Geometry type: POINT
+## Dimension:     XY
+## Bounding box:  xmin: -123.4973 ymin: 37.37356 xmax: -121.91 ymax: 38.2057
+## Geodetic CRS:  WGS 84
+```
+
+
+
+
 
 # Data Before Cutting 
 
 
 ```r
-ggplot() +
+p <- ggplot() +
   geom_sf(data = SFB.riskregions) +
   geom_sf(data = particles, color = "blue")
+p
 ```
 
 ![](Cutting_by_RiskRegion_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
@@ -138,14 +142,7 @@ ggplot() +
 
 ```r
 particles.within <- particles[SFB.riskregions,] # subsets only data within project study area
-```
 
-```
-## although coordinates are longitude/latitude, st_intersects assumes that they are planar
-## although coordinates are longitude/latitude, st_intersects assumes that they are planar
-```
-
-```r
 ggplot() +
   geom_sf(data = SFB.riskregions) +
   geom_sf(data = particles.within, color = "blue")
@@ -153,3 +150,13 @@ ggplot() +
 
 ![](Cutting_by_RiskRegion_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
 
+
+
+```r
+# write shapefile for SFEI.ID.particles.sf
+st_write(particles.within, "SFEI.particles.studyarea.shp")
+
+# Zip up newly created shapefiles:
+
+zip(zipfile = "SFEI.particles.studyarea.zip", files = c("SFEI.particles.studyarea.dbf", "SFEI.particles.studyarea.prj", "SFEI.particles.studyarea.shp", "SFEI.particles.studyarea.shx")) 
+```
